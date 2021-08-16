@@ -32,12 +32,31 @@ spec:
         - |
           #!/bin/bash
 
-
+          export TOOLCHAIN_ID=$TOOLCHAIN_ID
           REGION="--us-south"
           ibmcloud login --apikey $API_KEY -a "https://test.cloud.ibm.com" -r us-south
 
-          cd /tmp/cli-cra-plugin
+          ibmcloud plugin install /tmp/cli-cra-plugin/doi-cli-linux-amd64-0.3.2
 
-          ibmcloud plugin install ./doi-cli-linux-amd64-0.3.2
+          ibmcloud cra bom-generate --dir /tmp/cli-cra-plugin --report /tmp/test.json
 
-          ibmcloud cra bom-generate --help
+  sidecars:
+    - image: docker:19.03-dind
+      name: server
+      securityContext:
+        privileged: true
+      env:
+        # enable BUILDKIT Option
+        - name: DOCKER_BUILDKIT
+          value: 1
+        # Write generated certs to the path shared with the client.
+        - name: DOCKER_TLS_CERTDIR
+          value: /certs
+      volumeMounts:
+        - mountPath: /var/run/
+          name: docker-socket
+      # Wait for the dind daemon to generate the certs it will share with the client.
+      readinessProbe:
+        periodSeconds: 1
+        exec:
+          command: ["ls", "/certs/client/ca.pem"]
