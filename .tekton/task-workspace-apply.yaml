@@ -60,3 +60,22 @@ spec:
         periodSeconds: 1
         exec:
           command: ["ls", "/certs/client/ca.pem"]
+
+  volumes:
+    - name: config-volume
+      configMap:
+        name: toolchain
+    - name: docker-socket
+      emptyDir: {}
+    - name: environment-properties
+      configMap:
+        name: $(params.continuous-delivery-context-environment)
+    - name: secure-properties
+      secret:
+        secretName: $(params.continuous-delivery-context-secret)
+    - name: retry-script
+      configMap:
+        name: retry-script
+        items:
+          - key: retry.sh
+            path: retry.sh
