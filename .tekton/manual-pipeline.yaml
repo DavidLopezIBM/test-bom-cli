@@ -1,0 +1,21 @@
+---
+apiVersion: tekton.dev/v1beta1
+kind: Pipeline
+metadata:
+  name: deploy-pipeline
+spec:
+  params:
+    - name: TOOLCHAIN_ID
+      description: workspace id
+  workspaces:
+    - name: artifacts
+  tasks:
+    - name: test-bom
+      taskRef:
+        name: test-bom
+      workspaces:
+        - name: artifacts
+          workspace: artifacts
+      params:
+        - name: TOOLCHAIN_ID
+          value: $(params.TOOLCHAIN_ID)

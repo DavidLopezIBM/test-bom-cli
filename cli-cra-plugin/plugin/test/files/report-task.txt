@@ -1,0 +1,6 @@
+projectKey=idra
+serverUrl=https://sonar.bitbucket.dev.us-south.devops.cloud.ibm.com
+serverVersion=7.1.0.11001
+dashboardUrl=https://sonar.bitbucket.dev.us-south.devops.cloud.ibm.com/dashboard/index/idra
+ceTaskId=AWblTEPwZwkcHV39lYDs
+ceTaskUrl=https://sonar.bitbucket.dev.us-south.devops.cloud.ibm.com/api/ce/task?id=AWblTEPwZwkcHV39lYDs

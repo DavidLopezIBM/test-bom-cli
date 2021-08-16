@@ -1,0 +1,56 @@
+{
+    "custom_datasets": [
+        {
+            "lifecycle_stage": "integrationtest",
+            "type_of_test": "test",
+            "label": "Integration Test"
+        }
+    ],
+    "policies": [
+        {
+            "name":"Orders Production",
+            "description": "Composite Policy to check Unit Test, Functional Test, Integration test and Code Coverage.",
+            "rules":[
+              {
+                "description": "Unit Test Rule",
+                "format":"xunit",
+                "stage":"unittest",
+                "percentPass":100,
+                "regressionCheck":true,
+                "criticalTests":[
+      
+                ]
+              },
+              {
+                "name": "Functional Test Rule",
+                "description": "Functional Test Rule",
+                "format":"xunit",
+                "stage":"fvt",
+                "percentPass":100,
+                "regressionCheck":true,
+                "criticalTests":[
+      
+                ]
+              },
+              {
+                "description": "Code Coverage Rule",
+                "format":"istanbul",
+                "stage":"code",
+                "codeCoverage":65,
+                "regressionCheck":true
+              },
+              {
+                "name": "Integration Test Rule",
+                "description": "Integration Test Rule",
+                "format": "xunit",
+                "stage": "integrationtest",
+                "percentPass": 100,
+                "criticalTests": [],
+                "customStage": true,
+                "typeOfTest": "test",
+                "tag": "Integration Test Rule"
+            }
+            ]
+        }
+    ]
+}

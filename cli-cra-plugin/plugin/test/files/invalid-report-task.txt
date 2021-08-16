@@ -1,0 +1,6 @@
+projectKey=idrafake
+serverUrl=https://sonar.bitbucket.dev.us-south.devops.cloud.ibm.com
+serverVersion=7.1.0.11001
+dashboardUrl=https://sonar.bitbucket.dev.us-south.devops.cloud.ibm.com/dashboard/index/idrafake
+ceTaskId=AWblTEPwZwkcHV
+ceTaskUrl=https://sonar.bitbucket.dev.us-south.devops.cloud.ibm.com/api/ce/task?id=AWblTEPwZwkcHV

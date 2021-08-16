@@ -1,0 +1,43 @@
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: test-bom
+spec:
+  params:
+    - name: ibmcloud-apikey-secret-key
+      description: field in the secret that contains the api key used to login to ibmcloud
+      default: apikey
+    - name: continuous-delivery-context-secret
+      description: Reference name for the secret resource
+      default: "secure-properties"
+    - name: TOOLCHAIN_ID
+      description: the workspace id
+  workspaces:
+    - name: artifacts
+      mountPath: /artifacts
+  steps:
+    - name: bom-cli-test
+      image: davidlopez0912/test-plugin:v1
+      env:
+        - name: API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: $(params.continuous-delivery-context-secret)
+              key: $(params.ibmcloud-apikey-secret-key)
+              optional: true
+        - name: TOOLCHAIN_ID
+          value: $(params.TOOLCHAIN_ID)
+      command: ["/bin/bash", "-c"]
+      args:
+        - |
+          #!/bin/bash
+
+
+          REGION="--us-south"
+          ibmcloud login --apikey $API_KEY -a "https://test.cloud.ibm.com" -r us-south
+
+          cd /tmp/cli-cra-plugin
+
+          ibmcloud plugin install ./doi-cli-linux-amd64-0.3.2
+
+          ibmcloud cra bom-generate --help

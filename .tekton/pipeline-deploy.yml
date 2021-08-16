@@ -1,0 +1,11 @@
+properties:
+  - type: text
+    name: TOOLCHAIN_ID
+    value: ${TOOLCHAIN_ID}
+  - type: secure
+    name: apikey
+    value: ${API_KEY}
+triggers:
+  - type: manual
+    name: Manual Trigger - 0
+    eventListener: manual-trigger-listener

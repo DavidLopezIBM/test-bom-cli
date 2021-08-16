@@ -1,0 +1,104 @@
+
+def getHelmChartRepo() {
+    withCredentials([usernamePassword(credentialsId: 'dlaprod-w3', passwordVariable: 'GIT_PASS', usernameVariable: 'GIT_USER')]) {
+        sh '''
+            rm -rf dra-helm-chart
+            git clone -b master https://$GIT_USER:$GIT_PASS@github.ibm.com/oneibmcloud/dra-helm-chart.git
+            git config --global push.default simple
+            git config --global user.email "dlaprod@us.ibm.com"
+            git config --global user.name "DLA Prod"
+        '''
+    }
+}
+
+def getHelperFunctions() {
+    getHelmChartRepo()
+    def helper = load 'dra-helm-chart/scripts/groovy/HelperFunctions'
+    return helper
+}
+
+def buildAndTest(root) {
+    stage('Build & Test') {
+        withCredentials([string(credentialsId: 'ucparule_prod_api_key_for_demo', variable: 'API_KEY')]) {
+            withEnv(['GOROOT=' + root, 'PATH+GO=' + root + '/bin']) {
+                sh '''
+                    #!/bin/bash
+                
+                    set +x
+
+                    export GOPATH=$WORKSPACE/sandbox
+                    export PATH=$PATH:$GOROOT/bin:$GOPATH/bin
+                
+                    mkdir -p $WORKSPACE/sandbox/src/github.ibm.com/oneibmcloud/cli-doi-plugin
+                    cp -r $WORKSPACE/plugin $WORKSPACE/sandbox/src/github.ibm.com/oneibmcloud/cli-doi-plugin
+                    cp -r $WORKSPACE/vendor $WORKSPACE/sandbox/src/github.ibm.com/oneibmcloud/cli-doi-plugin
+                    cp -r $WORKSPACE/main.go $WORKSPACE/sandbox/src/github.ibm.com/oneibmcloud/cli-doi-plugin
+                
+                    cd $WORKSPACE/sandbox/src/github.ibm.com/oneibmcloud/cli-doi-plugin
+
+                    set -x
+
+                    govendor sync
+
+                    ibmcloud config --check-version=false
+                    ibmcloud plugin uninstall doi
+
+                    env GOARCH=amd64 GOOS=linux go build -o binaries/doi-cli-linux-amd64-0.0.1 github.ibm.com/oneibmcloud/cli-doi-plugin
+
+                    ibmcloud plugin install ./binaries/doi-cli-linux-amd64-0.0.1
+
+                    ibmcloud login -a cloud.ibm.com --apikey=$API_KEY --no-region
+
+                    go test github.ibm.com/oneibmcloud/cli-doi-plugin/plugin/test -count=1 -v 2>&1 | go-junit-report > ./report.xml
+                    gocov test github.ibm.com/oneibmcloud/cli-doi-plugin/plugin/test -count=1 -v | gocov-xml > ./coverage.xml
+
+                '''
+            }
+        }
+    }
+}
+
+node(env.DEFAULT_JENKINS_AGENT) {
+    try {
+        def appName = 'gocli'
+        def doiAppName = 'GO CLI'
+        def helper = getHelperFunctions()
+        helper.setDevOpsInsightsToolchainId()
+
+        stage('Checkout') {
+            checkout scm
+        }
+
+        // Install the desired Go version, installed version is 1.11
+        def root = tool name: 'Go 1.12', type: 'go'
+        // Install govendor
+        withEnv(["GOROOT=${root}", "PATH+GO=${root}/bin"]) {
+            sh '''
+                #!/bin/bash
+                go version
+
+                set +x
+
+                export GOPATH=$WORKSPACE/sandbox
+                go get -u github.com/kardianos/govendor
+                go get -u github.com/jstemmer/go-junit-report
+                go get github.com/axw/gocov/...
+                go get github.com/AlekSi/gocov-xml
+
+                set -x
+
+            '''
+        }
+
+        buildAndTest(root)
+
+        def gitCommit = sh(returnStdout: true, script: 'git rev-parse HEAD').trim() 
+        def gitRepo = 'https://github.ibm.com/oneibmcloud/cli-doi-plugin.git'
+        helper.sendBuildRecord(doiAppName, env.BRANCH_NAME, gitCommit, gitRepo, 'SUCCESS')
+
+        helper.sendTestResult(doiAppName, 'fvt', './sandbox/src/github.ibm.com/oneibmcloud/cli-doi-plugin/report.xml')
+        helper.sendTestResult(doiAppName, 'code', './sandbox/src/github.ibm.com/oneibmcloud/cli-doi-plugin/coverage.xml')
+    } catch (err) {
+        throw err
+    }
+}
