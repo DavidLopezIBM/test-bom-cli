@@ -39,6 +39,17 @@ spec:
           ibmcloud plugin install /tmp/cli-cra-plugin/doi-cli-linux-amd64-0.3.2
 
           ibmcloud cra bom-generate --dir /tmp/cli-cra-plugin --report /tmp/test.json
+      volumeMounts:
+        - mountPath: /config
+          name: config-volume
+        - mountPath: /var/run/
+          name: docker-socket
+        - mountPath: /properties
+          name: environment-properties
+        - mountPath: /secrets
+          name: secure-properties
+        - mountPath: /scripts
+          name: retry-script
 
   sidecars:
     - image: docker:19.03-dind
