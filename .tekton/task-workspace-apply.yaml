@@ -17,7 +17,7 @@ spec:
       mountPath: /artifacts
   steps:
     - name: bom-cli-test
-      image: davidlopez0912/test-plugin:v1
+      image: docker:19.03.14-dind
       env:
         - name: API_KEY
           valueFrom:
@@ -27,66 +27,73 @@ spec:
               optional: true
         - name: TOOLCHAIN_ID
           value: $(params.TOOLCHAIN_ID)
-      command: ["/bin/bash", "-c"]
+        # Docker config
+        - name: DOCKER_HOST
+          value: "tcp://localhost:2376"
+        - name: DOCKER_TLS_VERIFY
+          value: "1"
+        - name: DOCKER_CERT_PATH
+          value: /certs/client
+        - name: DOCKER_CONFIG
+          value: /steps
+      command: ["/bin/sh", "-c"]
       args:
         - |
           #!/bin/bash
 
           export TOOLCHAIN_ID=$TOOLCHAIN_ID
-          REGION="--us-south"
-          ibmcloud login --apikey $API_KEY -a "https://test.cloud.ibm.com" -r us-south
 
-          ibmcloud plugin install /tmp/cli-cra-plugin/doi-cli-linux-amd64-0.3.2
 
-          ibmcloud cra bom-generate --dir /tmp/cli-cra-plugin --report /tmp/test.json
+          echo "Installing golang"
+          apk add --no-cache go
+          echo "Golang installed successfully"
+          echo "Installing jq"
+          apk add jq
+          echo "jq installed successfully"
+
+          docker pull davidlopez0912/test-plugin:v1
+
+          echo -e "Installing ibmcloud cli..."
+          wget https://clis.cloud.ibm.com/download/bluemix-cli/1.2.0/linux64 -O ibmcloud-cli.tar.gz
+          tar xvf ibmcloud-cli.tar.gz
+          rm ibmcloud-cli.tar.gz
+          Bluemix_CLI/bin/ibmcloud --version
+          Bluemix_CLI/bin/ibmcloud plugin install container-registry
+          echo -e "ibmcloud cli installed successfully"
+          echo "Fetching users's token"
+          API_ENDPOINT="https://test.cloud.ibm.com"
+          Bluemix_CLI/bin/ibmcloud config --check-version false
+          Bluemix_CLI/bin/ibmcloud login -a $API_ENDPOINT --no-region --apikey $API_KEY
+          echo "Successfully logged into ibmcloud"
+          export IBM_CLOUD_BEARER=$(Bluemix_CLI/bin/ibmcloud iam oauth-tokens --output JSON | jq -r '.iam_token' | awk '{ print $2 }')
+          IAM_AUTH_TOKEN=$IBM_CLOUD_BEARER
+          export IAM_AUTH_TOKEN
+
+          Bluemix_CLI/bin/ibmcloud plugin install /tmp/cli-cra-plugin/doi-cli-linux-amd64-0.3.2
+
+          Bluemix_CLI/bin/ibmcloud cra bom-generate --dir /tmp/cli-cra-plugin --report /tmp/test.json
       volumeMounts:
-        - mountPath: /config
-          name: config-volume
-        - mountPath: /var/run/
-          name: docker-socket
-        - mountPath: /properties
-          name: environment-properties
-        - mountPath: /secrets
-          name: secure-properties
-        - mountPath: /scripts
-          name: retry-script
-
+        - mountPath: /steps
+          name: steps-volume
+        - mountPath: /certs/client
+          name: dind-certs
   sidecars:
-    - image: docker:19.03-dind
+    - image: docker:19.03.14-dind
       name: server
       securityContext:
         privileged: true
       env:
-        # enable BUILDKIT Option
-        - name: DOCKER_BUILDKIT
-          value: 1
-        # Write generated certs to the path shared with the client.
         - name: DOCKER_TLS_CERTDIR
           value: /certs
       volumeMounts:
-        - mountPath: /var/run/
-          name: docker-socket
-      # Wait for the dind daemon to generate the certs it will share with the client.
+        - mountPath: /certs/client
+          name: dind-certs
       readinessProbe:
         periodSeconds: 1
         exec:
           command: ["ls", "/certs/client/ca.pem"]
-
   volumes:
-    - name: config-volume
-      configMap:
-        name: toolchain
-    - name: docker-socket
+    - name: steps-volume
       emptyDir: {}
-    - name: environment-properties
-      configMap:
-        name: $(params.continuous-delivery-context-environment)
-    - name: secure-properties
-      secret:
-        secretName: $(params.continuous-delivery-context-secret)
-    - name: retry-script
-      configMap:
-        name: retry-script
-        items:
-          - key: retry.sh
-            path: retry.sh
+    - name: dind-certs
+      emptyDir: {}
