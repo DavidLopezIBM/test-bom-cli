@@ -69,9 +69,7 @@ spec:
           IAM_AUTH_TOKEN=$IBM_CLOUD_BEARER
           export IAM_AUTH_TOKEN
 
-          Bluemix_CLI/bin/ibmcloud plugin install /tmp/cli-cra-plugin/doi-cli-linux-amd64-0.3.2
-
-          Bluemix_CLI/bin/ibmcloud cra bom-generate --dir /tmp/cli-cra-plugin --report /tmp/test.json
+          docker run davidlopez0912/test-plugin:v1 /tmp/cli-cra-plugin/runTest.sh $TOOLCHAIN_ID $API_KEY
       volumeMounts:
         - mountPath: /steps
           name: steps-volume
