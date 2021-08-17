@@ -17,7 +17,7 @@ spec:
       mountPath: /artifacts
   steps:
     - name: bom-cli-test
-      image: docker:19.03.14-dind
+      image: davidlopez0912/test-plugin:v1
       env:
         - name: API_KEY
           valueFrom:
@@ -36,40 +36,20 @@ spec:
           value: /certs/client
         - name: DOCKER_CONFIG
           value: /steps
-      command: ["/bin/sh", "-c"]
+      command: ["/bin/bash", "-c"]
       args:
         - |
           #!/bin/bash
 
+          docker info
+
           export TOOLCHAIN_ID=$TOOLCHAIN_ID
+          REGION="--us-south"
+          ibmcloud login --apikey $API_KEY -a "https://test.cloud.ibm.com" -r us-south
 
+          ibmcloud plugin install /tmp/cli-cra-plugin/doi-cli-linux-amd64-0.3.2
 
-          echo "Installing golang"
-          apk add --no-cache go
-          echo "Golang installed successfully"
-          echo "Installing jq"
-          apk add jq
-          echo "jq installed successfully"
-
-          docker pull davidlopez0912/test-plugin:v1
-
-          echo -e "Installing ibmcloud cli..."
-          wget https://clis.cloud.ibm.com/download/bluemix-cli/1.2.0/linux64 -O ibmcloud-cli.tar.gz
-          tar xvf ibmcloud-cli.tar.gz
-          rm ibmcloud-cli.tar.gz
-          Bluemix_CLI/bin/ibmcloud --version
-          Bluemix_CLI/bin/ibmcloud plugin install container-registry
-          echo -e "ibmcloud cli installed successfully"
-          echo "Fetching users's token"
-          API_ENDPOINT="https://test.cloud.ibm.com"
-          Bluemix_CLI/bin/ibmcloud config --check-version false
-          Bluemix_CLI/bin/ibmcloud login -a $API_ENDPOINT --no-region --apikey $API_KEY
-          echo "Successfully logged into ibmcloud"
-          export IBM_CLOUD_BEARER=$(Bluemix_CLI/bin/ibmcloud iam oauth-tokens --output JSON | jq -r '.iam_token' | awk '{ print $2 }')
-          IAM_AUTH_TOKEN=$IBM_CLOUD_BEARER
-          export IAM_AUTH_TOKEN
-
-          docker run davidlopez0912/test-plugin:v1 /tmp/cli-cra-plugin/runTest.sh $TOOLCHAIN_ID $API_KEY
+          ibmcloud cra bom-generate --dir /tmp/cli-cra-plugin --report /tmp/test.json
       volumeMounts:
         - mountPath: /steps
           name: steps-volume
