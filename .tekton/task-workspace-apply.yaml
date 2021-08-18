@@ -17,7 +17,7 @@ spec:
       mountPath: /artifacts
   steps:
     - name: bom-cli-test
-      image: docker.io/ibmcom/pipeline-base-image
+      image: davidlopez0912/test-plugin:v1
       env:
         - name: API_KEY
           valueFrom:
